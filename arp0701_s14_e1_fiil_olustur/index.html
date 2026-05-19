@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نَشاط تَهْجِئَة الأَفْعال - Fiil Harf Birleştirme Etkinliği</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        @font-face {
+            font-family: 'arakom';
+            src: url('arakom.ttf') format('truetype'); 
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        /* Çocuk dostu Arapça ve Latince font entegrasyonu */
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Fredoka:wght@400;500;600&display=swap');
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0f9ff;
+            background-image: radial-gradient(#bae6fd 1px, transparent 1px);
+            background-size: 20px 20px;
+            user-select: none;
+            overflow: hidden; /* Dışarı taşmayı/kaydırmayı engelle */
+        }
+
+        /* Tüm Arapça metinleri Arakom yapmaya zorla */
+        .arabic-text {
+            font-family: 'arakom', 'Cairo', sans-serif !important;
+        }
+
+        .word-item {
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            touch-action: manipulation;
+        }
+        
+        .word-item:hover {
+            transform: scale(1.08);
+        }
+        
+        .word-item:active {
+            transform: scale(0.92);
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-10vh) rotate(0deg); }
+            100% { transform: translateY(110vh) rotate(360deg); }
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            animation: fall 3s linear infinite;
+            z-index: 100;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center p-2 sm:p-4 text-slate-800 relative">
+
+    <!-- Başlangıç Ekranı -->
+    <div id="start-screen" class="fixed inset-0 bg-[#f0f9ff] z-50 flex flex-col items-center justify-center p-4 transition-opacity duration-500">
+        <div class="absolute top-10 left-10 w-32 h-32 bg-sky-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
+        <div class="absolute bottom-10 right-10 w-40 h-40 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse" style="animation-delay: 2s;"></div>
+        
+        <div class="bg-white p-8 sm:p-12 rounded-3xl shadow-2xl border-4 border-sky-300 text-center max-w-xl w-full relative z-10 flex flex-col items-center">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-sky-500 mb-6 arabic-text leading-snug drop-shadow-sm">
+                نَشاط تَهْجِئَة الأَفْعال
+            </h1>
+            <p class="text-lg sm:text-xl text-slate-600 mb-10 font-medium"></p>
+            
+            <button id="start-btn" class="bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold py-4 px-12 rounded-full shadow-lg transform transition active:scale-95 flex items-center gap-3 text-2xl arabic-text">
+                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                اِبْدَأْ
+            </button>
+        </div>
+    </div>
+
+    <!-- Oyun Ana Konteyneri (Ekrana sığacak şekilde h-full ve esnek yapıldı) -->
+    <div class="max-w-4xl w-full h-full max-h-[900px] flex flex-col bg-white rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden border-2 sm:border-4 border-sky-300 relative z-10">
+        
+        <!-- Üst Panel -->
+        <div class="shrink-0 bg-sky-400 text-white p-2 sm:p-4 flex justify-between items-center relative overflow-hidden" dir="rtl">
+            <div class="relative z-10 flex items-center gap-3 sm:gap-5 shrink-0">
+                <div class="bg-white text-sky-500 font-bold w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm sm:text-xl shadow-inner arabic-text">
+                    <span id="current-question-num">1</span>/10
+                </div>
+                <div class="flex items-center arabic-text">
+                    <span class="font-semibold text-xs sm:text-base md:text-lg bg-white/20 px-2 sm:px-3 py-1 rounded-lg backdrop-blur-sm whitespace-nowrap">النَّتيجَة: <span id="score-display">0</span></span>
+                </div>
+            </div>
+            
+            <div class="relative z-10 text-center flex-1 px-2 arabic-text hidden sm:block">
+                <p class="text-xs sm:text-sm md:text-lg font-bold tracking-wide drop-shadow-sm leading-tight">اُنْقُرْ عَلى الحُروف بِالتَّرْتيب لِتَكْوين الفِعْل النّاقِص.</p>
+            </div>
+
+            <div class="relative z-10 flex items-center gap-1 sm:gap-2 shrink-0" dir="ltr">
+                <a href="file:///D:/Miraç/İHO7%20ARAPÇA%20ETKİNLİKLER/arp0701_s14_e1/index.html" id="home-btn" title="Ana Ekran" class="bg-white/20 hover:bg-white/30 text-white font-bold p-1.5 sm:p-2.5 rounded-full shadow-sm transform transition active:scale-95 flex items-center justify-center backdrop-blur-sm">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                </a>
+                <button id="fullscreen-toggle-btn" title="Tam Ekran" class="bg-white/20 hover:bg-white/30 text-white font-bold p-1.5 sm:p-2.5 rounded-full shadow-sm transform transition active:scale-95 flex items-center justify-center backdrop-blur-sm">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </button>
+            </div>
+
+            <div class="absolute -right-10 -top-10 w-24 h-24 sm:w-32 sm:h-32 bg-white opacity-20 rounded-full blur-2xl"></div>
+            <div class="absolute right-10 -bottom-10 w-16 h-16 sm:w-24 sm:h-24 bg-sky-300 opacity-30 rounded-full blur-xl"></div>
+        </div>
+
+        <div class="shrink-0 w-full bg-sky-100 h-1.5 sm:h-2">
+            <div id="progress-bar" class="bg-sky-500 h-1.5 sm:h-2 transition-all duration-500" style="width: 10%;"></div>
+        </div>
+
+        <!-- İçerik Alanı (Kalan yüksekliği tamamen kaplar) -->
+        <div class="p-2 sm:p-4 md:p-6 flex flex-col items-center flex-1 h-full min-h-0 overflow-y-auto w-full">
+            
+            <!-- Esnek Görsel Alanı (Ekran küçüldükçe daralır, büyüdükçe genişler) -->
+            <div class="w-full max-w-lg flex-1 min-h-[120px] rounded-xl sm:rounded-2xl overflow-hidden shadow-sm border-2 sm:border-4 border-slate-100 relative bg-slate-50 flex items-center justify-center mb-2">
+                <svg id="image-fallback" class="w-12 h-12 sm:w-16 sm:h-16 text-slate-300 absolute animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <img id="question-image" src="" alt="صورَة السُّؤال" class="w-full h-full object-contain p-2 relative z-10 transition-opacity duration-300 opacity-0" onload="this.classList.remove('opacity-0')">
+            </div>
+
+            <div id="message-area" class="shrink-0 h-auto min-h-[1.5rem] py-0.5 mb-1 font-bold text-xs sm:text-sm flex items-center justify-center w-full rounded-lg transition-colors duration-300 arabic-text text-center px-2"></div>
+
+            <!-- Yeni Cümle Paneli -->
+            <div id="sentence-container" dir="rtl" class="shrink-0 flex flex-wrap items-center justify-center gap-2 sm:gap-4 w-full min-h-[60px] sm:min-h-[80px] p-2 sm:p-3 bg-white rounded-lg sm:rounded-xl border-2 border-dashed border-sky-300 mb-2 shadow-inner arabic-text">
+                <div id="answer-container" class="flex flex-row gap-1 sm:gap-1.5 min-w-[120px] sm:min-w-[160px] min-h-[46px] sm:min-h-[60px] border-2 border-sky-200 bg-sky-50/20 rounded-xl items-center justify-center px-2.5 py-1.5 shadow-inner transition-colors duration-300"></div>
+                <div id="sentence-rest" dir="rtl" class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold text-slate-700 select-none tracking-wide arabic-text"></div>
+            </div>
+
+            <!-- Karışık Harf Havuzu -->
+            <div id="word-pool" dir="rtl" class="shrink-0 flex flex-wrap justify-center gap-1.5 sm:gap-3 w-full min-h-[55px] sm:min-h-[75px] p-2 bg-slate-50 rounded-lg sm:rounded-xl border-2 border-slate-200 mb-3 sm:mb-4 arabic-text"></div>
+
+            <!-- Alt Butonlar -->
+            <div class="shrink-0 flex justify-between items-center w-full gap-2 sm:gap-4 arabic-text mt-auto" dir="rtl">
+                <!-- İleri Butonu (Ok yönü değiştirildi) -->
+                <div class="flex-1 flex justify-start">
+                    <button id="next-btn" class="bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold py-2 px-3 sm:py-3 sm:px-6 rounded-full shadow-lg transform transition active:scale-95 flex items-center gap-1 sm:gap-2 opacity-50 cursor-not-allowed pointer-events-none text-xs sm:text-base md:text-lg">
+                        التّالي
+                        <!-- Sağa bakan ok -->
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Kontrol Et -->
+                <div class="flex-shrink-0">
+                    <button id="check-btn" class="bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold py-2 px-4 sm:py-3 sm:px-8 rounded-full shadow-lg transform transition active:scale-95 flex items-center gap-1 sm:gap-2 text-sm sm:text-base md:text-lg">
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        اِخْتَبِرْ
+                    </button>
+                </div>
+
+                <!-- Geri Butonu (Ok yönü değiştirildi) -->
+                <div class="flex-1 flex justify-end">
+                    <button id="prev-btn" class="bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold py-2 px-3 sm:py-3 sm:px-6 rounded-full shadow-sm transform transition active:scale-95 flex items-center gap-1 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-base md:text-lg">
+                        <!-- Sola bakan ok -->
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        السّابِق
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Oyun Sonu Ekranı -->
+    <div id="end-screen" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4 backdrop-blur-sm arabic-text" dir="rtl">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl sm:rounded-3xl max-w-md w-full text-center shadow-2xl transform transition-all scale-100">
+            <h2 class="text-3xl sm:text-4xl font-bold text-sky-500 mb-2">مُبارَك!</h2>
+            <p class="text-lg sm:text-xl text-slate-600 mb-4">لَقَد أَكْمَلْت النَّشاط.</p>
+            
+            <div class="bg-slate-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 border-2 border-slate-100">
+                <p class="text-base sm:text-lg text-slate-500 mb-1">مَجْموع نِقاطِك</p>
+                <p class="text-4xl sm:text-5xl font-extrabold text-sky-500" id="final-score">100</p>
+            </div>
+
+            <button id="restart-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl shadow-lg transform transition active:scale-95 text-base sm:text-lg flex items-center justify-center gap-2">
+                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                اِلْعَبْ مَرَّةً أُخْرى
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let questions = [
+            { image: "S5_UYANANKIZ.png", verb: "أَسْتَيْقِظُ", letters: ["أَ", "سْ", "تَ", "يْ", "قِ", "ظُ"], sentenceRest: "في الصَّباح مُبَكِّرًا." },
+	        { image: "1.png", verb: "أَتَوَضَّأُ", letters: ["أَ", "تَ", "وَ", "ضَّ", "أُ"], sentenceRest: "ثُمَّ أُصَلّي الفَجْر." },
+            { image: "S14_AİLESİYLEKAHVALTI.png", verb: "أَتَناوَلُ", letters: ["أَ", "تَ", "ن", "ا", "وَ", "لُ"], sentenceRest: "الفَطور مَع عائِلَتي." },
+            { image: "S14_GİYİNİYORKIZ.png", verb: "أَلْبَسُ", letters: ["أَ", "لْ", "بَ", "سُ"], sentenceRest: "مَلابِسي." },
+            { image: "S5_OKULAGİDİYORUM.png", verb: "أَذْهَبُ", letters: ["أَ", "ذْ", "هَ", "بُ"], sentenceRest: "إِلى المَدْرَسَة." },
+            { image: "S14_EVEGİDİYORUM.png", verb: "أَرْجِعُ", letters: ["أَ", "رْ", "جِ", "عُ"], sentenceRest: "إِلى البَيْت ظُهْرًا." },
+            { image: "S14_ANNESİNEYARDIM.png", verb: "أُساعِدُ", letters: ["أُ", "س", "ا", "عِ", "دُ"], sentenceRest: "أُمّي في البَيْت." },
+            { image: "S14_DERSÇALIŞIYOR.png", verb: "أَدْرُسُ", letters: ["أَ", "دْ", "رُ", "سُ"], sentenceRest: "دُروسي مَساءً." },
+            { image: "S5_YATSIKILIYOR.png", verb: "أُصَلّي", letters: ["أُ", "صَ", "لّ", "ي"], sentenceRest: "العِشاء." },
+            { image: "S5_UYUYANKIZ.png", verb: "أَنامُ", letters: ["أَ", "ن", "ا", "مُ"], sentenceRest: "لَيْلًا." }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isQuestionAnswered = false;
+        let solvedQuestions = new Set(); 
+        let poolLetters = [];      
+        let selectedLetters = [];  
+
+        const questionImage = document.getElementById('question-image');
+        const answerContainer = document.getElementById('answer-container');
+        const sentenceRest = document.getElementById('sentence-rest');
+        const wordPool = document.getElementById('word-pool');
+        const currentNumEl = document.getElementById('current-question-num');
+        const progressBar = document.getElementById('progress-bar');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const messageArea = document.getElementById('message-area');
+        const scoreDisplay = document.getElementById('score-display');
+        const endScreen = document.getElementById('end-screen');
+        const finalScoreEl = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const fullscreenBtn = document.getElementById('fullscreen-toggle-btn');
+
+        const clickSynth = new Tone.Synth({
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
+        }).toDestination();
+
+        const correctSynth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "triangle" },
+            envelope: { attack: 0.05, decay: 0.2, sustain: 0.2, release: 1 }
+        }).toDestination();
+
+        const wrongSynth = new Tone.MembraneSynth({
+            pitchDecay: 0.05,
+            octaves: 2,
+            oscillator: { type: "square" },
+            envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 }
+        }).toDestination();
+
+        async function playClickSound() { await Tone.start(); clickSynth.triggerAttackRelease("C5", "16n"); }
+        async function playCorrectSound() { await Tone.start(); correctSynth.triggerAttackRelease(["C5", "E5", "G5"], "8n"); }
+        async function playWrongSound() { await Tone.start(); wrongSynth.triggerAttackRelease("C3", "8n"); }
+
+        function shuffleArray(array) {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        }
+
+        startBtn.addEventListener('click', async () => {
+            // Yönerge sesini oynat
+            const instructionAudio = new Audio('e2.mp3');
+            instructionAudio.play().catch(e => console.log("Ses oynatılamadı:", e));
+
+            await Tone.start();
+            playClickSound();
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Tam ekran yapılamadı: ${err.message}`);
+                });
+            }
+            startScreen.classList.add('opacity-0');
+            setTimeout(() => {
+                startScreen.classList.add('hidden');
+            }, 500); 
+        });
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Tam ekran yapılamadı: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        function loadQuestion() {
+            const q = questions[currentQuestionIndex];
+            isQuestionAnswered = false;
+            
+            currentNumEl.textContent = currentQuestionIndex + 1;
+            progressBar.style.width = `${((currentQuestionIndex + 1) / questions.length) * 100}%`;
+            
+            questionImage.classList.add('opacity-0');
+            setTimeout(() => { questionImage.src = q.image; }, 50);
+
+            sentenceRest.textContent = q.sentenceRest;
+
+            const letterObjects = q.letters.map((l, idx) => ({ id: idx, letter: l }));
+            selectedLetters = [];
+            
+            poolLetters = shuffleArray(letterObjects);
+            while (poolLetters.map(o => o.letter).join('') === q.verb && q.letters.length > 1) {
+                poolLetters = shuffleArray(letterObjects);
+            }
+
+            renderGame();
+            showMessage("", "text-slate-700", "bg-transparent");
+            
+            checkBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            
+            // Sonraki tuşu varsayılanı (sağ ok)
+            nextBtn.innerHTML = `التّالي <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
+            nextBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            
+            if (currentQuestionIndex === 0) {
+                prevBtn.disabled = true;
+                prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                prevBtn.disabled = false;
+                prevBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function renderGame() {
+            const q = questions[currentQuestionIndex];
+
+            answerContainer.innerHTML = '';
+            selectedLetters.forEach((letterObj, idx) => {
+                const letterEl = document.createElement('button');
+                letterEl.className = 'arabic-text word-item bg-white border-2 border-sky-400 text-sky-600 font-bold w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl shadow-sm text-xl sm:text-2xl md:text-3xl flex items-center justify-center transition-all select-none';
+                letterEl.textContent = letterObj.letter;
+                
+                letterEl.addEventListener('click', () => {
+                    if (isQuestionAnswered) return;
+                    playClickSound();
+                    selectedLetters.splice(idx, 1);
+                    poolLetters.push(letterObj);
+                    renderGame();
+                });
+                answerContainer.appendChild(letterEl);
+            });
+
+            const remainingCount = q.letters.length - selectedLetters.length;
+            for (let i = 0; i < remainingCount; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl border-2 border-dashed border-sky-200 flex items-center justify-center text-sky-300 text-lg sm:text-2xl md:text-3xl font-bold select-none';
+                slot.textContent = '..';
+                answerContainer.appendChild(slot);
+            }
+
+            wordPool.innerHTML = '';
+            poolLetters.forEach((letterObj, idx) => {
+                const letterEl = document.createElement('button');
+                letterEl.className = 'arabic-text word-item bg-white border-2 border-slate-300 text-slate-800 font-bold w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl shadow-sm text-xl sm:text-2xl md:text-3xl flex items-center justify-center transition-all select-none';
+                letterEl.textContent = letterObj.letter;
+                
+                letterEl.addEventListener('click', () => {
+                    if (isQuestionAnswered) return;
+                    playClickSound();
+                    poolLetters.splice(idx, 1);
+                    selectedLetters.push(letterObj);
+                    renderGame();
+                });
+                wordPool.appendChild(letterEl);
+            });
+        }
+
+        function showMessage(text, textClass, bgClass) {
+            messageArea.textContent = text;
+            messageArea.className = `shrink-0 h-auto min-h-[1.5rem] py-0.5 mb-1 font-bold text-xs sm:text-sm flex items-center justify-center w-full rounded-lg transition-colors duration-300 arabic-text text-center px-2 ${textClass} ${bgClass}`;
+        }
+
+        checkBtn.addEventListener('click', () => {
+            if (isQuestionAnswered) return;
+
+            if (poolLetters.length > 0) {
+                 playWrongSound();
+                 showMessage("يُرْجى اِسْتِخْدام جَميع الحُروف لِتَكْوين الفِعْل.", "text-orange-700", "bg-orange-100");
+                 return;
+            }
+
+            const userSpelling = selectedLetters.map(o => o.letter).join('');
+            const correctVerb = questions[currentQuestionIndex].verb;
+
+            if (userSpelling === correctVerb) {
+                playCorrectSound();
+                isQuestionAnswered = true;
+                
+                if (!solvedQuestions.has(currentQuestionIndex)) {
+                    score += 10;
+                    solvedQuestions.add(currentQuestionIndex);
+                    scoreDisplay.textContent = score;
+                }
+                
+                showMessage("رائِع! إِجابَة صَحيحَة", "text-emerald-700", "bg-emerald-100");
+                
+                answerContainer.innerHTML = '';
+                selectedLetters.forEach(letterObj => {
+                    const letterEl = document.createElement('div');
+                    letterEl.className = 'arabic-text bg-emerald-50 border-2 border-emerald-400 text-emerald-700 font-bold w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl shadow-sm text-xl sm:text-2xl md:text-3xl flex items-center justify-center select-none';
+                    letterEl.textContent = letterObj.letter;
+                    answerContainer.appendChild(letterEl);
+                });
+
+                checkBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                nextBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                
+                if (currentQuestionIndex === questions.length - 1) {
+                    // Son sorudayken "Sonuçlar" ok yönü
+                    nextBtn.innerHTML = `النَّتائِج <svg class="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>`;
+                }
+                
+                createConfetti(25);
+
+            } else {
+                playWrongSound();
+                showMessage("التَّرْتيب خاطِئ، حَاوِلْ مَرَّةً أُخْرى!", "text-red-700", "bg-red-100");
+                
+                answerContainer.classList.add('animate-bounce');
+                setTimeout(() => answerContainer.classList.remove('animate-bounce'), 500);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            } else {
+                showEndScreen();
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion();
+            }
+        });
+
+        function showEndScreen() {
+            endScreen.classList.remove('hidden');
+            finalScoreEl.textContent = score;
+            if(score === questions.length * 10) {
+                createConfetti(100);
+            }
+        }
+
+        restartBtn.addEventListener('click', () => {
+            currentQuestionIndex = 0;
+            score = 0;
+            solvedQuestions.clear();
+            scoreDisplay.textContent = score;
+            endScreen.classList.add('hidden');
+            questions = shuffleArray(questions);
+            loadQuestion();
+        });
+
+        function createConfetti(amount) {
+            const colors = ['#38bdf8', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+            for (let i = 0; i < amount; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 3 + 's';
+                confetti.style.animationDuration = Math.random() * 2 + 2 + 's';
+                
+                if (Math.random() > 0.5) {
+                    confetti.style.borderRadius = '50%';
+                }
+
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+
+        window.onload = () => {
+            questions = shuffleArray(questions);
+            loadQuestion();
+        };
+    </script>
+</body>
+</html>

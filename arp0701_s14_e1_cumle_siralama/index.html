@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نَشاط تَرْتيب الجُمَل اليَوْمِيَّة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        @font-face {
+            font-family: 'arakom';
+            src: url('arakom.ttf') format('truetype'); 
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'arakom', sans-serif;
+            background-color: #fff1f2; /* Soft red background */
+            background-image: radial-gradient(#fecaca 1px, transparent 1px); /* Dot pattern */
+            background-size: 20px 20px;
+            user-select: none;
+            overflow: hidden; /* Prevent body scroll, handle scroll internally */
+        }
+
+        .arabic-text {
+            font-family: 'arakom', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Card transition effects */
+        .interactive-card {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .interactive-card:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Confetti animation */
+        @keyframes fall {
+            0% { transform: translateY(-100vh) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(360deg); }
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            animation: fall 3s linear infinite;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* Wiggle/Shake animation for wrong answers */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .shake-effect {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* SVG scale safeguard inside list cards */
+        #column-right svg, #column-left svg {
+            width: 100%;
+            height: 100%;
+            max-width: 44px;
+            max-height: 44px;
+        }
+
+        /* Custom Scrollbar for the game area */
+        .game-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .game-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+            border-radius: 4px;
+        }
+        .game-scroll::-webkit-scrollbar-thumb {
+            background: #fda4af; 
+            border-radius: 4px;
+        }
+        .game-scroll::-webkit-scrollbar-thumb:hover {
+            background: #fb7185; 
+        }
+    </style>
+</head>
+<body class="h-[100dvh] w-screen flex flex-col items-center justify-center p-0 sm:p-4 text-slate-800">
+
+    <!-- START SCREEN OVERLAY -->
+    <div id="start-screen" class="fixed inset-0 bg-rose-50/95 z-[100] flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white p-6 sm:p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl border-4 border-rose-300 transform transition-all relative overflow-hidden">
+            <!-- Decorative background elements -->
+            <div class="absolute -top-12 -left-12 w-32 h-32 bg-rose-100 rounded-full opacity-50 blur-xl"></div>
+
+            <h1 class="text-2xl sm:text-3xl font-black text-rose-500 mb-6 arabic-text leading-tight" dir="rtl">نَشاط تَرْتيب الجُمَل اليَوْمِيَّة</h1>
+            
+            <button id="start-btn" class="w-full bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transform transition active:scale-95 text-lg flex items-center justify-center gap-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
+                اِبْدَأْ
+            </button>
+        </div>
+    </div>
+
+    <!-- Container uses 100% height on mobile, 95vh on larger screens -->
+    <div class="max-w-5xl w-full h-[100dvh] sm:h-[95vh] bg-white sm:rounded-3xl shadow-2xl overflow-hidden sm:border-4 sm:border-rose-300 flex flex-col justify-between">
+        
+        <!-- Header: Ana Ekran Tuşu, Tam Ekran Kontrolü, Talimatlar ve Puan -->
+        <div class="bg-rose-400 text-white p-2 sm:p-4 flex flex-wrap sm:flex-nowrap justify-between items-center gap-2 sm:gap-4 relative overflow-hidden shrink-0" dir="ltr">
+            
+            <!-- Sol Üst: Ana Ekran (Home) ve Tam Ekran Butonları -->
+            <div class="relative z-10 flex items-center gap-1.5 sm:gap-2 shrink-0 order-1">
+                <!-- href kısmını kendi gideceğiniz sayfanın linki ile değiştirebilirsiniz (örn: ana_menu.html) -->
+                <a href="file:///D:/Miraç/İHO7%20ARAPÇA%20ETKİNLİKLER/arp0701_s14_e1/index.html" id="home-button" class="bg-white/20 hover:bg-white/30 active:scale-95 text-white font-bold p-1.5 sm:p-2 rounded-xl backdrop-blur-sm border border-white/10 transition flex items-center justify-center shadow-sm" title="Ana Ekrana Dön">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                </a>
+                
+                <button id="fullscreen-btn" class="bg-white/20 hover:bg-white/30 active:scale-95 text-white font-bold p-1.5 sm:p-2 rounded-xl backdrop-blur-sm border border-white/10 transition flex items-center justify-center shadow-sm" title="Tam Ekran Yap / Küçült">
+                    <!-- Expand Icon -->
+                    <svg id="fullscreen-icon-enter" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7"></path>
+                    </svg>
+                    <!-- Compress Icon -->
+                    <svg id="fullscreen-icon-exit" class="w-5 h-5 sm:w-6 sm:h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 14h6v6M10 14l-7 7M20 10h-6V4M14 10l7-7"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Sağ Üst: Puan Göstergesi (Mobilde sağ üstte durması için order-2) -->
+            <div class="relative z-10 flex items-center gap-2 arabic-text shrink-0 order-2 sm:order-3" dir="rtl">
+                 <span class="font-semibold text-xs sm:text-sm bg-white/20 px-2.5 py-1.5 rounded-lg backdrop-blur-sm whitespace-nowrap border border-white/10">
+                    الدَّرَجَة: <span id="score-display" class="font-bold text-yellow-300">٠</span> / ١٠٠
+                 </span>
+            </div>
+
+            <!-- Orta Bölüm: Arapça Yönerge (Mobilde alta kayıp ortalanması için order-3 ve w-full) -->
+            <div class="relative z-10 text-center px-1 arabic-text w-full sm:flex-1 sm:w-auto order-3 sm:order-2 mt-1 sm:mt-0" dir="rtl">
+                <p class="text-[14px] sm:text-[20px] lg:text-[24px] font-bold leading-relaxed bg-rose-500/30 px-3 py-1 sm:py-1.5 rounded-xl border border-rose-300/30 inline-block">
+                    رَتِّب الجُمَل بِالتَّسَلْسُل الصَّحيح مِن الأولى إِلى العاشِرَة.
+                </p>
+            </div>
+
+            <!-- Decorative background elements -->
+            <div class="absolute -right-10 -top-10 w-20 h-20 bg-white opacity-10 rounded-full blur-xl pointer-events-none"></div>
+            <div class="absolute left-10 -bottom-10 w-16 h-16 bg-rose-300 opacity-20 rounded-full blur-lg pointer-events-none"></div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="w-full bg-rose-100 h-1.5 shrink-0">
+            <div id="progress-bar" class="bg-gradient-to-r from-rose-400 to-rose-500 h-1.5 transition-all duration-500" style="width: 0%;"></div>
+        </div>
+
+        <!-- Main Game Area - Kaydırılabilir Yapı (overflow-y-auto) -->
+        <div class="game-scroll bg-slate-50/50 flex-1 overflow-y-auto w-full relative p-2 sm:p-4 md:p-6">
+            
+            <!-- Mobilde tek sütun (grid-cols-1), büyük ekranda çift sütun (lg:grid-cols-2) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 h-max items-start" dir="rtl">
+                
+                <!-- Sağ Sütun: Adım 1-5 (Mobilde üstte kalır) -->
+                <div class="flex flex-col gap-2 sm:gap-3 h-auto justify-start w-full">
+                    <h3 class="text-[12px] sm:text-sm font-bold text-slate-700 flex items-center gap-1.5 mb-1 justify-center shrink-0">
+                    </h3>
+                    <div id="column-right" class="flex flex-col gap-2 sm:gap-3 items-center justify-start w-full h-auto">
+                        <!-- Adım 1-5 buraya dinamik eklenecek -->
+                    </div>
+                </div>
+
+                <!-- Sol Sütun: Adım 6-10 (Mobilde alta kayar) -->
+                <div class="flex flex-col gap-2 sm:gap-3 h-auto justify-start w-full mt-2 lg:mt-0">
+                    <h3 class="text-[12px] sm:text-sm font-bold text-slate-700 flex items-center gap-1.5 mb-1 justify-center shrink-0">
+                    </h3>
+                    <div id="column-left" class="flex flex-col gap-2 sm:gap-3 items-center justify-start w-full h-auto">
+                        <!-- Adım 6-10 buraya dinamik eklenecek -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Status and Control Bar -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 border-t border-slate-200 bg-white shrink-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <!-- Status Message -->
+            <div id="status-message" class="w-full sm:w-auto p-2 text-center text-[13px] sm:text-sm rounded-lg font-semibold transition-all duration-300 border border-transparent min-h-[38px] flex items-center justify-center arabic-text flex-1 bg-slate-100 text-slate-600">
+            </div>
+
+            <!-- Controls -->
+            <div class="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
+                <button id="clear-btn" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 font-bold py-2.5 sm:py-2 px-4 rounded-lg shadow-sm transition active:scale-95 text-[13px] sm:text-sm flex items-center justify-center gap-1.5 arabic-text">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    أَعِدْ خَلْط
+                </button>
+
+                <button id="check-btn" class="flex-1 sm:flex-none bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-bold py-2.5 sm:py-2 px-6 rounded-lg shadow-md transition active:scale-95 text-[13px] sm:text-sm flex items-center justify-center gap-1.5 arabic-text">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    اِخْتَبِرْ
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="image-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm cursor-pointer" onclick="closeImageModal()">
+        <div class="relative max-w-3xl max-h-[85vh] bg-white p-2 sm:p-3 rounded-2xl sm:rounded-3xl border-4 border-rose-300 shadow-2xl overflow-hidden cursor-default" onclick="event.stopPropagation()">
+            <!-- Close Button -->
+            <button onclick="closeImageModal()" class="absolute top-2 right-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center shadow-md transition transform hover:scale-105 active:scale-95 z-10 text-lg">
+                ✕
+            </button>
+            <!-- Enlarged Image -->
+            <img id="modal-enlarged-image" src="" alt="Enlarged Step View" class="max-w-full max-h-[75vh] rounded-xl object-contain">
+            <!-- Fallback SVG Container -->
+            <div id="modal-fallback-svg" class="hidden w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center p-4"></div>
+        </div>
+    </div>
+
+    <!-- Celebration / End Screen -->
+    <div id="end-screen" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm arabic-text" dir="rtl">
+        <div class="bg-white p-6 sm:p-10 rounded-3xl max-w-md w-full text-center shadow-2xl border-4 border-emerald-400 transform transition-all scale-100 relative overflow-hidden">
+            <!-- Background glow -->
+            <div class="absolute -top-12 -left-12 w-32 h-32 bg-emerald-100 rounded-full opacity-50 blur-xl"></div>
+            
+            <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-emerald-200">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+
+            <h2 class="text-3xl sm:text-4xl font-black text-emerald-600 mb-2">أَحْسَنْتَ جِدًّا!</h2>
+            <p class="text-base sm:text-lg text-slate-500 mb-4 sm:mb-6">لَقَدْ رَتَّبْتَ جُمَل اليَوْم بِنَجاح.</p>
+            
+            <div class="bg-slate-50 rounded-2xl p-5 mb-6 border-2 border-slate-100">
+                <p class="text-xs sm:text-sm text-slate-400 mb-1 font-semibold">الدَّرَجَة الكامِلَة</p>
+                <p class="text-5xl sm:text-6xl font-extrabold text-emerald-500" id="final-score">١٠٠ / ١٠٠</p>
+            </div>
+
+            <button id="restart-btn" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 sm:py-4 px-6 rounded-xl shadow-lg transform transition active:scale-95 text-base sm:text-lg flex items-center justify-center gap-2">
+                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                اِلْعَبْ مَرَّةً أُخْرى
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Original sorted 10 Daily Routine steps
+        const routineSteps = [
+            {
+                id: 1, arabicNum: "١", stepName: "الأُولى", image: "S5_UYANANKIZ.png",
+                correctSentence: "أَسْتَيْقِظُ في الصَّباح مُبَكِّرًا.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>`
+            },
+            {
+                id: 2, arabicNum: "٢", stepName: "الثّانِيَة", image: "1.png",
+                correctSentence: "أَتَوَضَّأُ ثُمَّ أُصَلّي الفَجْر.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>`
+            },
+            {
+                id: 3, arabicNum: "٣", stepName: "الثّالِثَة", image: "S14_AİLESİYLEKAHVALTI.png",
+                correctSentence: "أَتَناوَلُ الفَطور مَع عائِلَتي.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>`
+            },
+            {
+                id: 4, arabicNum: "٤", stepName: "الرّابِعَة", image: "S14_GİYİNİYORKIZ.png",
+                correctSentence: "أَلْبَسُ مَلابِسي.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>`
+            },
+            {
+                id: 5, arabicNum: "٥", stepName: "الخامِسَة", image: "S5_OKULAGİDİYORUM.png",
+                correctSentence: "أَذْهَبُ إِلى المَدْرَسَة.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>`
+            },
+            {
+                id: 6, arabicNum: "٦", stepName: "السّادِسَة", image: "S14_EVEGİDİYORUM.png",
+                correctSentence: "أَرْجِعُ إِلى البَيْت ظُهْرًا.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>`
+            },
+            {
+                id: 7, arabicNum: "٧", stepName: "السّابِعَة", image: "S14_ANNESİNEYARDIM.png",
+                correctSentence: "أُساعِدُ أُمّي في البَيْت.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`
+            },
+            {
+                id: 8, arabicNum: "٨", stepName: "الثّامِنَة", image: "S14_DERSÇALIŞIYOR.png",
+                correctSentence: "أَدْرُسُ دُروسي مَساءً.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.168.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477-4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`
+            },
+            {
+                id: 9, arabicNum: "٩", stepName: "التّاسِعَة", image: "S5_YATSIKILIYOR.png",
+                correctSentence: "أُصَلّي العِشاء.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>`
+            },
+            {
+                id: 10, arabicNum: "١٠", stepName: "العاشِرَة", image: "S5_UYUYANKIZ.png",
+                correctSentence: "أَنامُ لَيْلًا.",
+                fallbackIcon: `<svg class="w-16 h-16 sm:w-20 sm:h-20 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>`
+            }
+        ];
+
+        let placedSentences = [];
+        let hasChecked = false;
+
+        let clickSynth = null;
+        let correctSynth = null;
+        let wrongSynth = null;
+        let audioSupported = false;
+
+        try {
+            if (typeof Tone !== 'undefined') {
+                clickSynth = new Tone.Synth({
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
+                }).toDestination();
+
+                correctSynth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "triangle" },
+                    envelope: { attack: 0.05, decay: 0.2, sustain: 0.2, release: 0.8 }
+                }).toDestination();
+
+                wrongSynth = new Tone.MembraneSynth({
+                    pitchDecay: 0.05,
+                    octaves: 2,
+                    oscillator: { type: "square" },
+                    envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 }
+                }).toDestination();
+                audioSupported = true;
+            }
+        } catch (e) {
+            console.warn("Tone.js setup failed:", e);
+        }
+
+        const introAudio = new Audio('e1.mp3');
+        let introAudioPlayed = false;
+
+        function playIntroAudio() {
+            if (introAudioPlayed) return;
+            introAudio.play().then(() => {
+                introAudioPlayed = true;
+            }).catch(err => {
+                console.warn("Otomatik ses oynatılamadı. Etkileşim bekleniyor.", err);
+            });
+        }
+
+        async function playClickSound() { 
+            if (!audioSupported) return;
+            try { await Tone.start(); if (clickSynth) clickSynth.triggerAttackRelease("C5", "16n"); } catch (e) {} 
+        }
+        async function playCorrectSound() { 
+            if (!audioSupported) return;
+            try { await Tone.start(); if (correctSynth) correctSynth.triggerAttackRelease(["C5", "E5", "G5"], "8n"); } catch (e) {} 
+        }
+        async function playWrongSound() { 
+            if (!audioSupported) return;
+            try { await Tone.start(); if (wrongSynth) wrongSynth.triggerAttackRelease("C3", "8n"); } catch (e) {} 
+        }
+
+        const columnRight = document.getElementById('column-right');
+        const columnLeft = document.getElementById('column-left');
+        const statusMessage = document.getElementById('status-message');
+        const scoreDisplay = document.getElementById('score-display');
+        const progressBar = document.getElementById('progress-bar');
+        const checkBtn = document.getElementById('check-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const endScreen = document.getElementById('end-screen');
+        const finalScoreEl = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const fullscreenIconEnter = document.getElementById('fullscreen-icon-enter');
+        const fullscreenIconExit = document.getElementById('fullscreen-icon-exit');
+
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+
+        // Başla Butonu Mantığı
+        startBtn.addEventListener('click', async () => {
+            // Sesi başlat (tarayıcı izni için)
+            if (audioSupported) {
+                try {
+                    await Tone.start();
+                    if (clickSynth) clickSynth.triggerAttackRelease("C5", "16n");
+                } catch(e){}
+            }
+            // Tam ekrana geç
+            triggerAutoFullscreen();
+            // Sesli yönergeyi çal
+            playIntroAudio();
+            // Başlangıç ekranını gizle
+            startScreen.classList.add('hidden');
+        });
+
+
+        function shuffleArray(array) {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        }
+
+        function initGame() {
+            hasChecked = false;
+            const correctOrder = routineSteps.map(step => step.correctSentence);
+            let shuffled = shuffleArray(correctOrder);
+            while (shuffled.every((sentence, idx) => sentence === correctOrder[idx])) {
+                shuffled = shuffleArray(correctOrder);
+            }
+            placedSentences = shuffled;
+            scoreDisplay.textContent = "٠";
+            progressBar.style.width = "0%";
+            showStatus("", "text-slate-600", "bg-slate-100");
+            renderGameBoard();
+            updateProgress();
+        }
+
+        function openImageModal(index) {
+            const step = routineSteps[index];
+            const modal = document.getElementById('image-modal');
+            const modalImg = document.getElementById('modal-enlarged-image');
+            const modalFallback = document.getElementById('modal-fallback-svg');
+            
+            if (step.image && step.image !== "" && !step.image.includes("undefined")) {
+                modalImg.src = step.image;
+                modalImg.classList.remove('hidden');
+                modalFallback.classList.add('hidden');
+                modalImg.onerror = () => {
+                    modalImg.classList.add('hidden');
+                    modalFallback.innerHTML = step.fallbackIcon;
+                    modalFallback.classList.remove('hidden');
+                };
+            } else {
+                modalImg.classList.add('hidden');
+                modalFallback.innerHTML = step.fallbackIcon;
+                modalFallback.classList.remove('hidden');
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeImageModal() {
+            document.getElementById('image-modal').classList.add('hidden');
+        }
+
+        function renderGameBoard() {
+            columnRight.innerHTML = '';
+            columnLeft.innerHTML = '';
+
+            routineSteps.forEach((step, index) => {
+                const currentSentence = placedSentences[index];
+                
+                const card = document.createElement('div');
+                card.id = `slot-card-${index}`;
+                // Kart yüksekliğini min-h yaparak dinamik büyümesine izin verildi.
+                card.className = "interactive-card bg-white rounded-xl sm:rounded-2xl border border-slate-200 p-1.5 sm:p-2 flex items-stretch gap-2 sm:gap-3 shadow-sm w-full transition-all duration-300 min-h-[68px] sm:min-h-[76px]";
+                
+                card.innerHTML = `
+                    <div id="image-box-${index}" onclick="event.stopPropagation(); playClickSound(); openImageModal(${index})" class="flex items-center justify-center gap-1.5 sm:gap-2.5 bg-rose-50/50 border border-rose-100/50 rounded-lg p-1 w-[80px] sm:w-[110px] shrink-0 transition-all duration-300 cursor-zoom-in hover:bg-rose-100" title="Zoom">
+                        <div class="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-rose-100 border border-rose-200 flex items-center justify-center font-bold text-rose-600 text-[11px] sm:text-sm arabic-text shrink-0">
+                            ${step.arabicNum}
+                        </div>
+                        <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-md bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center shrink-0 relative shadow-inner">
+                            <img src="${step.image}" alt="${step.stepName}" class="w-full h-full object-cover transition-opacity duration-300 opacity-0 absolute inset-0" onload="this.classList.remove('opacity-0')" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
+                            <div class="hidden absolute inset-0 flex items-center justify-center">${step.fallbackIcon}</div>
+                        </div>
+                    </div>
+
+                    <div id="sentence-box-${index}" class="flex-1 flex items-center justify-between gap-2 border border-rose-100/40 bg-rose-50/15 rounded-md p-1.5 sm:p-2 transition-colors duration-300">
+                        <!-- Metin alanı sığmazsa taşmak yerine aşağı insin diye truncate kaldırıldı -->
+                        <div class="flex-1 text-right">
+                            <span class="arabic-text text-[14px] sm:text-[18px] md:text-[22px] text-slate-800 font-extrabold leading-snug whitespace-normal block" dir="rtl" title="${currentSentence}">${currentSentence}</span>
+                        </div>
+
+                        <!-- Butonlar dikey hizalanarak yer kazancı sağlandı -->
+                        <div class="flex flex-col gap-1 shrink-0 justify-center items-center bg-slate-50 border border-slate-100 rounded-md p-1 h-full">
+                            <button onclick="event.stopPropagation(); playClickSound(); moveSentence(${index}, 'up');" class="w-6 h-6 sm:w-8 sm:h-8 rounded bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition flex items-center justify-center border border-slate-100 shadow-sm ${index === 0 ? 'opacity-20 cursor-not-allowed pointer-events-none' : 'hover:scale-105 active:scale-95'}" title="Up">
+                                <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M5 15l7-7 7 7"></path>
+                                </svg>
+                            </button>
+                            <button onclick="event.stopPropagation(); playClickSound(); moveSentence(${index}, 'down');" class="w-6 h-6 sm:w-8 sm:h-8 rounded bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition flex items-center justify-center border border-slate-100 shadow-sm ${index === 9 ? 'opacity-20 cursor-not-allowed pointer-events-none' : 'hover:scale-105 active:scale-95'}" title="Down">
+                                <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                if (index < 5) {
+                    columnRight.appendChild(card);
+                } else {
+                    columnLeft.appendChild(card);
+                }
+            });
+        }
+
+        function moveSentence(index, direction) {
+            const targetIndex = index + (direction === 'up' ? -1 : 1);
+            if (targetIndex < 0 || targetIndex >= 10) return;
+
+            if (hasChecked) {
+                hasChecked = false;
+                resetHighlights();
+            }
+
+            const temp = placedSentences[index];
+            placedSentences[index] = placedSentences[targetIndex];
+            placedSentences[targetIndex] = temp;
+
+            updateProgress();
+            renderGameBoard();
+
+            const card1 = document.getElementById(`slot-card-${index}`);
+            const card2 = document.getElementById(`slot-card-${targetIndex}`);
+            if (card1 && card2) {
+                card1.classList.add('bg-amber-50', 'border-amber-300', 'scale-[1.01]');
+                card2.classList.add('bg-amber-50', 'border-amber-300', 'scale-[1.01]');
+                setTimeout(() => {
+                    card1.classList.remove('bg-amber-50', 'border-amber-300', 'scale-[1.01]');
+                    card2.classList.remove('bg-amber-50', 'border-amber-300', 'scale-[1.01]');
+                }, 300);
+            }
+        }
+
+        function resetHighlights() {
+            routineSteps.forEach((_, index) => {
+                const card = document.getElementById(`slot-card-${index}`);
+                const imageBox = document.getElementById(`image-box-${index}`);
+                const sentenceBox = document.getElementById(`sentence-box-${index}`);
+                
+                if (card) {
+                    card.classList.remove('border-emerald-500', 'bg-emerald-50/10', 'border-red-400', 'bg-red-50/10', 'shake-effect');
+                    card.classList.add('border-slate-200');
+                }
+                if (imageBox) {
+                    imageBox.classList.remove('border-emerald-500/50', 'bg-emerald-100/50', 'border-red-400/50', 'bg-red-100/50');
+                    imageBox.classList.add('bg-rose-50/50', 'border-rose-100/50');
+                }
+                if (sentenceBox) {
+                    sentenceBox.classList.remove('border-emerald-500/50', 'bg-emerald-50/30', 'border-red-400/50', 'bg-red-50/30');
+                    sentenceBox.classList.add('border-rose-100/40', 'bg-rose-50/15');
+                }
+            });
+        }
+
+        function updateProgress() {
+            let correctCount = 0;
+            routineSteps.forEach((step, index) => {
+                if (placedSentences[index] === step.correctSentence) {
+                    correctCount++;
+                }
+            });
+            const percentage = (correctCount / 10) * 100;
+            progressBar.style.width = `${percentage}%`;
+        }
+
+        function showStatus(text, textClass, bgClass) {
+            statusMessage.textContent = text;
+            statusMessage.className = `w-full sm:w-auto p-2 text-center text-[13px] sm:text-sm rounded-lg font-semibold transition-all duration-300 border min-h-[38px] flex items-center justify-center arabic-text flex-1 ${textClass} ${bgClass}`;
+        }
+
+        clearBtn.addEventListener('click', () => {
+            playClickSound();
+            initGame();
+        });
+
+        checkBtn.addEventListener('click', () => {
+            let correctCount = 0;
+            hasChecked = true;
+            
+            routineSteps.forEach((step, index) => {
+                const userSentence = placedSentences[index];
+                const isCorrect = userSentence === step.correctSentence;
+                const cardElement = document.getElementById(`slot-card-${index}`);
+                const imageBox = document.getElementById(`image-box-${index}`);
+                const sentenceBox = document.getElementById(`sentence-box-${index}`);
+
+                if (cardElement) {
+                    cardElement.classList.remove('border-slate-200', 'border-emerald-500', 'bg-emerald-50/10', 'border-red-400', 'bg-red-50/10', 'shake-effect');
+                    
+                    if (isCorrect) {
+                        correctCount++;
+                        cardElement.classList.add('border-emerald-500', 'bg-emerald-50/10');
+                        if (imageBox) {
+                            imageBox.classList.remove('bg-rose-50/50', 'border-rose-100/50');
+                            imageBox.classList.add('border-emerald-500/50', 'bg-emerald-100/50');
+                        }
+                        if (sentenceBox) {
+                            sentenceBox.classList.remove('border-rose-100/40', 'bg-rose-50/15');
+                            sentenceBox.classList.add('border-emerald-500/50', 'bg-emerald-50/30');
+                        }
+                    } else {
+                        cardElement.classList.add('border-red-400', 'bg-red-50/10', 'shake-effect');
+                        if (imageBox) {
+                            imageBox.classList.remove('bg-rose-50/50', 'border-rose-100/50');
+                            imageBox.classList.add('border-red-400/50', 'bg-red-100/50');
+                        }
+                        if (sentenceBox) {
+                            sentenceBox.classList.remove('border-rose-100/40', 'bg-rose-50/15');
+                            sentenceBox.classList.add('border-red-400/50', 'bg-red-50/30');
+                        }
+                        setTimeout(() => cardElement.classList.remove('shake-effect'), 500);
+                    }
+                }
+            });
+
+            updateProgress();
+            const finalScore = correctCount * 10;
+            scoreDisplay.textContent = convertToArabicNumeral(finalScore);
+
+            if (correctCount === 10) {
+                playCorrectSound();
+                showStatus("مُمْتَازٌ! كُلُّ الإِجَابَاتِ صَحِيحَةٌ!", "text-emerald-700", "bg-emerald-100 border-emerald-300");
+                createConfetti(50);
+                setTimeout(showEndScreen, 1500);
+            } else {
+                playWrongSound();
+                showStatus(`حَاوِلْ مَرَّةً أُخْرَى! لَدَيْكَ ${convertToArabicNumeral(correctCount)} إِجَابَاتٍ صَحِيحَةٍ.`, "text-red-700", "bg-red-100 border-red-300");
+            }
+        });
+
+        function convertToArabicNumeral(number) {
+            const map = {
+                '0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤',
+                '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'
+            };
+            return number.toString().split('').map(char => map[char] || char).join('');
+        }
+
+        function createConfetti(amount) {
+            const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+            for (let i = 0; i < amount; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 1.5 + 's';
+                confetti.style.animationDuration = Math.random() * 2 + 2 + 's';
+                if (Math.random() > 0.5) confetti.style.borderRadius = '50%';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 4000);
+            }
+        }
+
+        function showEndScreen() {
+            endScreen.classList.remove('hidden');
+            finalScoreEl.textContent = "١٠٠ / ١٠٠";
+            createConfetti(80);
+        }
+
+        restartBtn.addEventListener('click', () => {
+            endScreen.classList.add('hidden');
+            introAudioPlayed = false;
+            playIntroAudio();
+            initGame();
+        });
+
+        function enterFullscreen() {
+            const docEl = document.documentElement;
+            if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+            else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+            else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen();
+            else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+
+        function toggleFullscreen() {
+            const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (!isFS) enterFullscreen();
+            else exitFullscreen();
+        }
+
+        fullscreenBtn.addEventListener('click', () => {
+            playClickSound();
+            toggleFullscreen();
+        });
+
+        const handleFullscreenChange = () => {
+            const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (isFS) {
+                fullscreenIconEnter.classList.add('hidden');
+                fullscreenIconExit.classList.remove('hidden');
+            } else {
+                fullscreenIconEnter.classList.remove('hidden');
+                fullscreenIconExit.classList.add('hidden');
+            }
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        function triggerAutoFullscreen() {
+            const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (!isFS) enterFullscreen();
+        }
+
+        // Oyun ilk açıldığında tahtayı hazırlar fakat arka planda bekletir.
+        window.onload = () => {
+            initGame();
+        };
+    </script>
+</body>
+</html>
